@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bad Apple!!</title>
+  <link rel="stylesheet" href="src/style.css" />
+</head>
+<body>
+  <!-- Overlay UI -->
+  <div id="ui">
+    <div id="loading">
+      <div class="spinner"></div>
+      <p>Loading binary data & measuring fonts...</p>
+    </div>
+    
+    <button id="btnPlay" style="display: none;" title="Play">
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    </button>
+  </div>
+  
+  <!-- Reset Button -->
+  <button id="btnReset" title="Reset Simulation" style="display: none;">
+    <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+  </button>
+
+  <canvas id="canvas"></canvas>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
