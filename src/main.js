@@ -29,8 +29,8 @@ async function init() {
   try {
     //Fetch text lyrics
     const [resEN, resJP] = await Promise.all([
-      fetch('/lyrics_bad_apple_en.txt'),
-      fetch('/lyrics_bad_apple_jp.txt')
+      fetch('lyrics_bad_apple_en.txt'),
+      fetch('lyrics_bad_apple_jp.txt')
     ]);
     
     const textEN = await resEN.text();
@@ -41,7 +41,7 @@ async function init() {
     const textJP = decoder.decode(bufferJP);
 
     //Fetch and parse binary frame data
-    const resBin = await fetch('/frames.bin');
+    const resBin = await fetch('frames.bin');
     const bufferBin = await resBin.arrayBuffer();
     uint16Data = new Uint16Array(bufferBin);
     
@@ -53,7 +53,7 @@ async function init() {
       ptr += 1 + (numSegments * 4); 
     }
 
-    audio = new Audio('/audio.m4a'); 
+    audio = new Audio('audio.m4a'); 
     audio.addEventListener('ended', () => {
       audio.currentTime = 0;
       audio.pause();
