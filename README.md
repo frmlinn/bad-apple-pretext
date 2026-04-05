@@ -1,5 +1,5 @@
 # Bad Apple!! - Pretext Rendering Experiment
-
+![Bad Apple Pretext](docs/bad-apple.jpg)
 So, I just saw the amazing `@chenglou/pretext` library and immediately felt the urge to build something with it. I'd seen an example of Chika Fujiwara from *Kaguya-sama: Love is War* dancing in the middle of a block of text, and it hit me: recreating the classic "Bad Apple!!" animation (yet again) would be the perfect way to test this engine's limits.
 
 ## A bit of the process

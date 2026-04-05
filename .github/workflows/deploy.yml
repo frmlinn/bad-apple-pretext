@@ -2,7 +2,10 @@ name: Deploy to Pages
 
 on:
   push:
-    branches: ['main']
+    branches: [ "main", "master" ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
 
 permissions:
   contents: read
