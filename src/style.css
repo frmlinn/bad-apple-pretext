@@ -1,110 +1,88 @@
-/* Full-screen reset */
-*, *::before, *::after {
+* {
   box-sizing: border-box;
 }
 
-html, body {
+body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
   background-color: #000;
+  color: #fff;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   overflow: hidden;
-  font-family: system-ui, -apple-system, sans-serif;
 }
 
-canvas {
+#canvas {
   display: block;
-  width: 100%;
-  height: 100%;
+  background-color: #000;
   cursor: pointer;
 }
 
-/* Glassmorphism UI Overlay */
 #ui {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(4px);
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.8);
   z-index: 10;
-  color: white;
-  transition: opacity 0.4s ease-out;
+  transition: opacity 0.3s ease;
+  gap: 1.25rem; /* ~20px */
 }
 
 #loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 15px;
-  color: #ccc;
+  font-size: 1.5rem;
+  letter-spacing: 0.125rem; /* ~2px */
+  animation: pulse 1.5s infinite;
 }
 
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid rgba(255, 255, 255, 0.1);
-  border-left-color: #fff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
+@keyframes pulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Control Elements */
-#btnPlay, #btnReset {
-  background-color: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
+button {
+  display: none;
+  padding: 0.75rem 1.875rem; /* ~12px 30px */
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #000;
+  background-color: #fff;
+  border: 0.125rem solid #fff; /* ~2px */
+  border-radius: 0.5rem; /* ~8px */
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.2s ease, background-color 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.125rem; /* ~2px */
+  transition: all 0.2s ease;
+  user-select: none;
+  font-family: 'Noto Sans JP', 'Helvetica Neue', sans-serif;
 }
 
-#btnPlay {
-  width: 80px;
-  height: 80px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+button:hover {
+  background-color: #000;
+  color: #fff;
 }
 
-#btnPlay svg {
-  width: 40px;
-  height: 40px;
-  fill: white;
-  margin-left: 6px;
+button:active {
+  transform: scale(0.95);
 }
 
 #btnReset {
   position: fixed;
-  top: 20px;
-  right: 20px;
-  width: 45px;
-  height: 45px;
-  z-index: 20;
-}
-
-#btnReset svg {
-  width: 24px;
-  height: 24px;
-  fill: white;
-}
-
-#btnPlay:hover, #btnReset:hover {
-  background-color: rgba(255, 255, 255, 0.3);
-  transform: scale(1.1);
+  bottom: 2rem; /* ~32px */
+  right: 2rem; /* ~32px */
+  z-index: 50;
+  padding: 0.625rem 1.25rem; /* ~10px 20px */
+  font-size: 0.9rem;
+  background-color: rgba(255, 255, 255, 0.8);
 }
 
 #btnReset:hover {
-  transform: scale(1.1) rotate(-45deg);
+  background-color: #000;
 }

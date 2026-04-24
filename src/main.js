@@ -1,76 +1,95 @@
+/**
+ * @fileoverview Main entry point for the Bad Apple!! Pretext Canvas simulation.
+ * Handles fetching, canvas scaling, dynamic font rendering, and playback control.
+ */
+
 import { prepareWithSegments, layoutNextLine } from '@chenglou/pretext';
 
+/** @type {HTMLCanvasElement} */
 const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d', { alpha: false }); // alpha: false optimizes GPU rendering
+/** @type {CanvasRenderingContext2D} */
+const ctx = canvas.getContext('2d', { alpha: false });
+
+/** @type {HTMLElement} */
 const ui = document.getElementById('ui');
+/** @type {HTMLElement} */
 const loadingText = document.getElementById('loading');
+/** @type {HTMLButtonElement} */
 const btnPlay = document.getElementById('btnPlay');
+/** @type {HTMLButtonElement} */
 const btnReset = document.getElementById('btnReset');
 
 const FPS_VIDEO = 30;
-const TEXT_ROWS = 40;        // So it matches the preprocessing script
-const LOGICAL_WIDTH = 1000; 
+const TEXT_ROWS = 80;
+const LOGICAL_WIDTH = 1000;
 
-const FONT_EN = 'bold 14px "Helvetica Neue", Helvetica, Arial, sans-serif';
-const FONT_JP = 'bold 14px "Noto Sans JP", sans-serif';
-
+/** @type {HTMLAudioElement} */
 let audio;
+/** @type {Uint16Array} */
 let uint16Data;
+/** @type {number[]} */
 let frameOffsets = [];
+
+let rawTextEN = '';
+let rawTextJP = '';
 let preparedEN;
 let preparedJP;
-let scaleX = 1;
-let lineHeight = 1;
 
-// ==========================================
-// INITIALIZATION
-// ==========================================
+let currentFontEN = '';
+let currentFontJP = '';
+let physicalScaleX = 1;
+let physicalLineHeight = 1;
+
+let resizeTimeout;
+let isPlaying = false;
+
+/**
+ * Initializes resources (lyrics, binary frames, audio) and sets up event listeners.
+ * @async
+ * @returns {Promise<void>}
+ */
 async function init() {
   try {
-    //Fetch text lyrics
-    const [resEN, resJP] = await Promise.all([
+    const [resEN, resJP, resBin] = await Promise.all([
       fetch('lyrics_bad_apple_en.txt'),
-      fetch('lyrics_bad_apple_jp.txt')
+      fetch('lyrics_bad_apple_jp.txt'),
+      fetch('frames.bin')
     ]);
-    
-    const textEN = await resEN.text();
-    
-    // Strict UTF-8 decoding to prevent Mojibake in Japanese text
-    const bufferJP = await resJP.arrayBuffer();
-    const decoder = new TextDecoder('utf-8');
-    const textJP = decoder.decode(bufferJP);
 
-    //Fetch and parse binary frame data
-    const resBin = await fetch('frames.bin');
+    rawTextEN = await resEN.text();
+    const bufferJP = await resJP.arrayBuffer();
+    rawTextJP = new TextDecoder('utf-8').decode(bufferJP);
+
     const bufferBin = await resBin.arrayBuffer();
     uint16Data = new Uint16Array(bufferBin);
-    
-    // Look-up table for frame byte offsets
+
     let ptr = 0;
     while (ptr < uint16Data.length) {
       frameOffsets.push(ptr);
       const numSegments = uint16Data[ptr];
-      ptr += 1 + (numSegments * 4); 
+      ptr += 1 + (numSegments * 4);
     }
 
-    audio = new Audio('audio.m4a'); 
-    audio.addEventListener('ended', () => {
-      audio.currentTime = 0;
-      audio.pause();
-      ui.style.display = 'flex';
-      ui.style.opacity = '1';
-    });
-    
-    handleResize();
-    window.addEventListener('resize', handleResize);
+    audio = new Audio('audio.m4a');
+    audio.addEventListener('ended', onAudioEnded);
 
-    // Pre-computes glyph metrics and segmentation caches 
-    preparedEN = prepareWithSegments(textEN, FONT_EN);
-    preparedJP = prepareWithSegments(textJP, FONT_JP);
+    handleResize();
+
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(handleResize, 150);
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && isPlaying) {
+        audio.pause();
+        isPlaying = false;
+      }
+    });
 
     loadingText.style.display = 'none';
-    btnPlay.style.display = 'flex'; 
-    btnReset.style.display = 'flex';
+    btnPlay.style.display = 'block';
+    btnReset.style.display = 'block';
 
   } catch (error) {
     loadingText.innerText = "Error loading resources";
@@ -78,54 +97,100 @@ async function init() {
   }
 }
 
-// ==========================================
-// VIEWPORT HANDLING
-// ==========================================
-function handleResize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  scaleX = canvas.width / LOGICAL_WIDTH;
-  lineHeight = canvas.height / TEXT_ROWS;
+/**
+ * Handles audio completion, resetting UI and playback state.
+ * @returns {void}
+ */
+function onAudioEnded() {
+  isPlaying = false;
+  audio.currentTime = 0;
+  ui.style.display = 'flex';
+  ui.style.opacity = '1';
 }
 
-// ==========================================
-// MAIN RENDER LOOP
-// ==========================================
-function renderLoop() {
-  if (audio.paused) return;
+/**
+ * Calculates responsive viewport dimensions, applies HiDPI scaling,
+ * and dynamically recalculates Pretext text boundaries.
+ * @returns {void}
+ */
+function handleResize() {
+  const cssWidth = window.innerWidth;
+  const cssHeight = window.innerHeight;
 
-  // Sync current frame with audio timeline
+  canvas.style.width = `${cssWidth}px`;
+  canvas.style.height = `${cssHeight}px`;
+
+  const dpr = window.devicePixelRatio || 1;
+  const physWidth = Math.floor(cssWidth * dpr);
+  const physHeight = Math.floor(cssHeight * dpr);
+
+  canvas.width = physWidth;
+  canvas.height = physHeight;
+
+  physicalScaleX = physWidth / LOGICAL_WIDTH;
+  physicalLineHeight = physHeight / TEXT_ROWS;
+
+  const fontSize = Math.max(8, Math.floor(physicalLineHeight * 0.9));
+  currentFontEN = `bold ${fontSize}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+  currentFontJP = `bold ${fontSize}px "Noto Sans JP", sans-serif`;
+
+  if (rawTextEN && rawTextJP) {
+    preparedEN = prepareWithSegments(rawTextEN, currentFontEN);
+    preparedJP = prepareWithSegments(rawTextJP, currentFontJP);
+  }
+
+  if (audio && audio.paused && audio.currentTime > 0) {
+    renderFrame();
+  }
+}
+
+/**
+ * Core rendering loop. Requests animation frames while audio is playing.
+ * @returns {void}
+ */
+function renderLoop() {
+  if (!isPlaying) return;
+  renderFrame();
+  requestAnimationFrame(renderLoop);
+}
+
+/**
+ * Synchronizes binary frame data with audio timeline and draws text segments to the canvas.
+ * @returns {void}
+ */
+function renderFrame() {
   let currentFrame = (audio.currentTime * FPS_VIDEO) | 0;
   if (currentFrame >= frameOffsets.length) currentFrame = frameOffsets.length - 1;
 
-  // Clear previous frame
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = 'black';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Retrieve segment data for the current frame
   const offset = frameOffsets[currentFrame];
   const numSegments = uint16Data[offset];
   let ptr = offset + 1;
-  
+
   ctx.textBaseline = 'top';
 
-  // Reset cursors to loop text organically per frame
   let cursorEN = { segmentIndex: 0, graphemeIndex: 0 };
   let cursorJP = { segmentIndex: 0, graphemeIndex: 0 };
 
   for (let i = 0; i < numSegments; i++) {
     const logicalY = uint16Data[ptr++];
     const colorType = uint16Data[ptr++];
-    const startX = uint16Data[ptr++] * scaleX;
-    const endX = uint16Data[ptr++] * scaleX;
-    const realY = logicalY * lineHeight;
+    const logicalStartX = uint16Data[ptr++];
+    const logicalEndX = uint16Data[ptr++];
+
+    const startX = logicalStartX * physicalScaleX;
+    const endX = logicalEndX * physicalScaleX;
+    const realY = logicalY * physicalLineHeight;
     const segmentWidth = endX - startX;
 
-    if (segmentWidth <= 0) continue; 
+    if (segmentWidth <= 0) continue;
 
     if (colorType === 1) {
       ctx.fillStyle = 'white';
-      ctx.fillRect(startX, realY, segmentWidth, lineHeight);
+      ctx.fillRect(startX, realY, segmentWidth, physicalLineHeight);
 
       let line = layoutNextLine(preparedEN, cursorEN, segmentWidth);
       if (line === null) {
@@ -135,11 +200,10 @@ function renderLoop() {
 
       if (line) {
         ctx.fillStyle = 'black';
-        ctx.font = FONT_EN;
+        ctx.font = currentFontEN;
         ctx.fillText(line.text, startX, realY);
-        cursorEN = line.end; // Advance cursor
+        cursorEN = line.end;
       }
-
     } else {
       let line = layoutNextLine(preparedJP, cursorJP, segmentWidth);
       if (line === null) {
@@ -149,55 +213,83 @@ function renderLoop() {
 
       if (line) {
         ctx.fillStyle = 'white';
-        ctx.font = FONT_JP;
+        ctx.font = currentFontJP;
         ctx.fillText(line.text, startX, realY);
         cursorJP = line.end;
       }
     }
   }
-
-  requestAnimationFrame(renderLoop);
 }
 
-// ==========================================
-// EVENT LISTENERS
-// ==========================================
-
-// Initial Play
-btnPlay.addEventListener('click', (e) => {
-  e.stopPropagation(); 
-  ui.style.opacity = '0';
-  setTimeout(() => ui.style.display = 'none', 300);
-  
-  audio.play();
-  requestAnimationFrame(renderLoop);
-});
-
-// Canvas Play/Pause toggle
-canvas.addEventListener('click', () => {
-  if (!audio) return; 
-  
-  if (audio.paused) {
-    audio.play();
-    requestAnimationFrame(renderLoop); 
-  } else {
-    audio.pause();
-  }
-});
-
-// Global Reset
-btnReset.addEventListener('click', () => {
+/**
+ * Initiates audio playback and transitions UI.
+ * Handles mobile browser autoplay restrictions.
+ * @returns {void}
+ */
+function startPlaying() {
   if (!audio) return;
-  
+  isPlaying = true;
+
+  audio.play().then(() => {
+    ui.style.opacity = '0';
+    setTimeout(() => ui.style.display = 'none', 300);
+    requestAnimationFrame(renderLoop);
+  }).catch(err => {
+    console.error("Autoplay blocked by browser:", err);
+    isPlaying = false;
+  });
+}
+
+/**
+ * Handles reset functionality. Pauses audio, resets time, and restores initial UI.
+ * @returns {void}
+ */
+function resetSimulation() {
+  if (!audio) return;
+
   audio.pause();
   audio.currentTime = 0;
-  
-  // Clear canvas to prevent stuck frames
+  isPlaying = false;
+
   ctx.fillStyle = 'black';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  
+
   ui.style.display = 'flex';
   setTimeout(() => ui.style.opacity = '1', 10);
+}
+
+// ---------------------------------------------------------
+// EVENT LISTENERS
+// ---------------------------------------------------------
+
+['click', 'touchstart'].forEach(evt => {
+  btnPlay.addEventListener(evt, (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    startPlaying();
+  }, { passive: false });
 });
 
+['click', 'touchstart'].forEach(evt => {
+  canvas.addEventListener(evt, (e) => {
+    e.preventDefault();
+    if (!audio) return;
+    if (isPlaying) {
+      audio.pause();
+      isPlaying = false;
+    } else {
+      startPlaying();
+    }
+  }, { passive: false });
+});
+
+['click', 'touchstart'].forEach(evt => {
+  btnReset.addEventListener(evt, (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    resetSimulation();
+  }, { passive: false });
+});
+
+// Bootstrap application
 init();
