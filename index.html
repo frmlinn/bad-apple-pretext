@@ -1,23 +1,26 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Bad Apple!!</title>
-  
-  <link rel="stylesheet" href="/src/style.css" />
-</head>
-<body>
-  
-  <canvas id="canvas"></canvas>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bad Apple!! - Pretext Render</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
 
-  <div id="ui">
-    <div id="loading">Loading resources...</div>
-    <button id="btnPlay" style="display: none;">PLAY 再生</button>
-  </div>
+    <div id="ui">
+      <div id="loading">Loading resources... 0%</div>
+      
+      <div id="progressContainer">
+        <div id="progressBar"></div>
+      </div>
+      
+      <button id="btnPlay">PLAY 再生</button>
+    </div>
 
-  <button id="btnReset" style="display: none;">RESET リセット</button>
+    <button id="btnReset">RESET リセット</button>
 
-  <script type="module" src="/src/main.js"></script>
-</body>
+    <script type="module" src="/src/main.js"></script>
+  </body>
 </html>

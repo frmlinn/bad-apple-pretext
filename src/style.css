@@ -41,6 +41,23 @@ body {
   animation: pulse 1.5s infinite;
 }
 
+/* Nuevas reglas extraídas del HTML para la barra de progreso */
+#progressContainer {
+  width: 12.5rem; /* ~200px */
+  height: 0.25rem; /* ~4px */
+  background-color: #222;
+  margin-top: 0.75rem; /* ~12px */
+  border-radius: 0.125rem; /* ~2px */
+  overflow: hidden;
+}
+
+#progressBar {
+  width: 0%; /* El UIManager controlará este porcentaje */
+  height: 100%;
+  background-color: #ffffff;
+  transition: width 0.1s linear;
+}
+
 @keyframes pulse {
   0% { opacity: 0.5; }
   50% { opacity: 1; }
@@ -48,7 +65,7 @@ body {
 }
 
 button {
-  display: none;
+  display: none; /* Esto oculta automáticamente btnPlay y btnReset al cargar */
   padding: 0.75rem 1.875rem; /* ~12px 30px */
   font-size: 1.1rem;
   font-weight: bold;
